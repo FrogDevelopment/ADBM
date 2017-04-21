@@ -8,13 +8,13 @@ import android.util.Log;
 
 class ADBMAsyncTaskLoader extends AsyncTaskLoader<Cursor> {
 
-	private final ADBMCallBack adbmCallBack;
-	private final String query;
+	private final ADBMCallBack mAdbmCallBack;
+	private final String mQuery;
 
 	ADBMAsyncTaskLoader(Context context, ADBMCallBack adbmCallBack, String query) {
 		super(context);
-		this.adbmCallBack = adbmCallBack;
-		this.query = query;
+		this.mAdbmCallBack = adbmCallBack;
+		this.mQuery = query;
 
 		// run only once
 		onContentChanged();
@@ -32,11 +32,11 @@ class ADBMAsyncTaskLoader extends AsyncTaskLoader<Cursor> {
 	@Override
 	public Cursor loadInBackground() {
 		try {
-			Log.d("ADBM", "mQuery=" + query);
-			return adbmCallBack.getSqLiteOpenHelper().getReadableDatabase().rawQuery(query, null);
+			Log.d("ADBM", "mQuery=" + mQuery);
+			return mAdbmCallBack.getSqLiteOpenHelper().getReadableDatabase().rawQuery(mQuery, null);
 		} catch (SQLException e) {
 			Log.e("ADBM", "Error while querying", e);
-			adbmCallBack.showError(e);
+			mAdbmCallBack.showError(e);
 
 			return null;
 		}

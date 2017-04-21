@@ -6,6 +6,7 @@ import android.app.LoaderManager;
 import android.content.AsyncTaskLoader;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Loader;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -49,11 +50,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import fr.frogdevelopment.nihongo.dico.contentprovider.NihonGoDicoContentProvider;
-
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 
+// https://github.com/sanathp/DatabaseManager_For_Android
 @SuppressLint("SetTextI18n")
 public class _ADBMActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, QueryAsyncTaskLoader.ResultHandler {
 
@@ -95,10 +95,6 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 		if (actionBar != null) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
 		}
-
-		// *****************************************
-		// fixme
-		mSqLiteOpenHelper = new NihonGoDicoContentProvider.DictionaryOpenHelper(this);
 
 		// *****************************************
 		// rootView = scrollview so we can scroll it ...
@@ -145,15 +141,18 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 		mSubmitQueryButton = new Button(this);
 		mSubmitQueryButton.setVisibility(View.GONE);
 		mSubmitQueryButton.setText("Submit Query");
-		mSubmitQueryButton.setOnClickListener(v -> {
-			String customQuery = mCustomQueryEditText.getText().toString();
+		mSubmitQueryButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				String customQuery = mCustomQueryEditText.getText().toString();
 
-			if (!TextUtils.isEmpty(customQuery)) {
-				Bundle args = new Bundle();
-				args.putString("customQuery", customQuery);
-				getLoaderManager().restartLoader(LOADER_ID_CUSTOM_QUERY, args, this);
+				if (!TextUtils.isEmpty(customQuery)) {
+					Bundle args = new Bundle();
+					args.putString("customQuery", customQuery);
+					_ADBMActivity.this.getLoaderManager().restartLoader(LOADER_ID_CUSTOM_QUERY, args, _ADBMActivity.this);
 //			} else {
-				// fixme
+					// fixme
+				}
 			}
 		});
 		mainLayout.addView(mSubmitQueryButton);
@@ -202,7 +201,12 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 		RelativeLayout.LayoutParams previousLayoutParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
 		previousLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_START);
 		mPreviousButton.setLayoutParams(previousLayoutParams);
-		mPreviousButton.setOnClickListener(v -> displayTablePage(--currentPageNumber));
+		mPreviousButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				_ADBMActivity.this.displayTablePage(--currentPageNumber);
+			}
+		});
 		mNavigationLayout.addView(mPreviousButton);
 
 		mNbPageTextView = new TextView(this);
@@ -218,7 +222,12 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 		RelativeLayout.LayoutParams nextLayoutParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
 		nextLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_END);
 		mNextButton.setLayoutParams(nextLayoutParams);
-		mNextButton.setOnClickListener(v -> displayTablePage(++currentPageNumber));
+		mNextButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				_ADBMActivity.this.displayTablePage(++currentPageNumber);
+			}
+		});
 		mNavigationLayout.addView(mNextButton);
 
 		mainLayout.addView(mNavigationLayout);
@@ -337,71 +346,80 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 			linearLayout.addView(row);
 		}
 
-		runOnUiThread(() -> {
-			if (!isFinishing()) {
-				new AlertDialog.Builder(this)
-						.setTitle("Update or Delete row")
-						.setView(mainView)
-						.setCancelable(false)
-						.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				if (!_ADBMActivity.this.isFinishing()) {
+					new AlertDialog.Builder(_ADBMActivity.this)
+							.setTitle("Update or Delete row")
+							.setView(mainView)
+							.setCancelable(false)
+							.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
 
-							List<String> updates = new ArrayList<>();
-							for (Map.Entry<String, Integer> entry : COLUMNS.entrySet()) {
-								String field = entry.getKey();
-								if (BaseColumns._ID.equals(field)) {
-									continue;
-								}
+									List<String> updates = new ArrayList<>();
+									for (Map.Entry<String, Integer> entry : COLUMNS.entrySet()) {
+										String field = entry.getKey();
+										if (BaseColumns._ID.equals(field)) {
+											continue;
+										}
 
-								String value = mapET.get(field).getText().toString();
+										String value = mapET.get(field).getText().toString();
 
-								if (value.equals(NULL_VALUE)) {
-									updates.add(field + " = null");
-								} else {
-									// handle type
-									int type = entry.getValue();
-									switch (type) {
-										case Cursor.FIELD_TYPE_STRING:
-											updates.add(field + " = " + "'" + value + "'");
-											break;
+										if (value.equals(NULL_VALUE)) {
+											updates.add(field + " = null");
+										} else {
+											// handle type
+											int type = entry.getValue();
+											switch (type) {
+												case Cursor.FIELD_TYPE_STRING:
+													updates.add(field + " = " + "'" + value + "'");
+													break;
 
-										case Cursor.FIELD_TYPE_INTEGER:
-										case Cursor.FIELD_TYPE_FLOAT:
-											updates.add(field + " = " + value);
-											break;
+												case Cursor.FIELD_TYPE_INTEGER:
+												case Cursor.FIELD_TYPE_FLOAT:
+													updates.add(field + " = " + value);
+													break;
 
-										default:
-											// no handle
+												default:
+													// no handle
+											}
+										}
+									}
+
+									String query = "UPDATE " + currentTableName + " SET " + TextUtils.join(", ", updates) + " WHERE _ID = " + mapET.get(BaseColumns._ID);
+
+									// fixme confirmation ?
+									try {
+//								mSqLiteOpenHelper.execute(query);
+										Snackbar.make(mRootView, currentTableName + " table Updated Successfully", Snackbar.LENGTH_LONG).show();
+//								refreshTable(null); fixme
+									} catch (SQLException e) {
+										Log.e("ADBM", "error while updating row", e);
+										mMessageTextView.setBackgroundColor(Color.RED);
+										mMessageTextView.setText("Error: " + e.getMessage());
 									}
 								}
-							}
-
-							String query = "UPDATE " + currentTableName + " SET " + TextUtils.join(", ", updates) + " WHERE _ID = " + mapET.get(BaseColumns._ID);
-
-							// fixme confirmation ?
-							try {
-//								mSqLiteOpenHelper.execute(query);
-								Snackbar.make(mRootView, currentTableName + " table Updated Successfully", Snackbar.LENGTH_LONG).show();
-//								refreshTable(null); fixme
-							} catch (SQLException e) {
-								Log.e("ADBM", "error while updating row", e);
-								mMessageTextView.setBackgroundColor(Color.RED);
-								mMessageTextView.setText("Error: " + e.getMessage());
-							}
-						})
-						.setNeutralButton("close", null)
-						.setNegativeButton("delete", (dialog, which) -> {
-							// fixme confirmation ?
-							try {
+							})
+							.setNeutralButton("close", null)
+							.setNegativeButton("delete", new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									// fixme confirmation ?
+									try {
 //								mSqLiteOpenHelper.execute("DELETE FROM " + currentTableName + " WHERE _ID = " + mapET.get(BaseColumns._ID));
-								Snackbar.make(mRootView, "Row deleted from " + currentTableName + " table", Snackbar.LENGTH_LONG).show();
+										Snackbar.make(mRootView, "Row deleted from " + currentTableName + " table", Snackbar.LENGTH_LONG).show();
 //								refreshTable(null); fixme
-							} catch (SQLException e) {
-								Log.e("ADBM", "error while deleting row", e);
-								mMessageTextView.setBackgroundColor(Color.RED);
-								mMessageTextView.setText("Error: " + e.getMessage());
-							}
-						})
-						.show();
+									} catch (SQLException e) {
+										Log.e("ADBM", "error while deleting row", e);
+										mMessageTextView.setBackgroundColor(Color.RED);
+										mMessageTextView.setText("Error: " + e.getMessage());
+									}
+								}
+							})
+							.show();
+				}
 			}
 		});
 	}
@@ -409,7 +427,12 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 	private void displayTablePage(int pageNumber) {
 		this.currentPageNumber = pageNumber;
 
-		runOnUiThread(() -> mNbPageTextView.setText(currentPageNumber + "/" + numberOfPages));
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				mNbPageTextView.setText(currentPageNumber + "/" + numberOfPages);
+			}
+		});
 
 		// clear data
 		COLUMNS.clear();
@@ -433,46 +456,58 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 	}
 
 	private void dropTable() {
-		runOnUiThread(() -> {
-			if (!isFinishing()) {
-				new AlertDialog.Builder(this)
-						.setTitle("Drop table [" + currentTableName + "]")
-						.setMessage("This will remove the table [" + currentTableName + "] from the database")
-						.setPositiveButton("continue", (dialog, which) -> {
-							try {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				if (!_ADBMActivity.this.isFinishing()) {
+					new AlertDialog.Builder(_ADBMActivity.this)
+							.setTitle("Drop table [" + currentTableName + "]")
+							.setMessage("This will remove the table [" + currentTableName + "] from the database")
+							.setPositiveButton("continue", new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									try {
 //								mSqLiteOpenHelper.execute("DROP TABLE " + currentTableName);
-								Snackbar.make(mRootView, currentTableName + " dropped Successfully", Snackbar.LENGTH_LONG).show();
-							} catch (SQLException e) {
-								Log.e("ADBM", "Error while droping table " + currentTableName, e);
-								mMessageTextView.setBackgroundColor(Color.RED);
-								mMessageTextView.setText("Error: " + e.getMessage());
-							}
-						})
-						.setNegativeButton(android.R.string.cancel, null)
-						.show();
+										Snackbar.make(mRootView, currentTableName + " dropped Successfully", Snackbar.LENGTH_LONG).show();
+									} catch (SQLException e) {
+										Log.e("ADBM", "Error while droping table " + currentTableName, e);
+										mMessageTextView.setBackgroundColor(Color.RED);
+										mMessageTextView.setText("Error: " + e.getMessage());
+									}
+								}
+							})
+							.setNegativeButton(android.R.string.cancel, null)
+							.show();
+				}
 			}
 		});
 	}
 
 	private void deleteTable() {
-		runOnUiThread(() -> {
-			if (!isFinishing()) {
-				new AlertDialog.Builder(this)
-						.setTitle("Delete table [" + currentTableName + "]")
-						.setMessage("This will remove all data from table [" + currentTableName + "]")
-						.setPositiveButton("continue", (dialog, which) -> {
-							try {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				if (!_ADBMActivity.this.isFinishing()) {
+					new AlertDialog.Builder(_ADBMActivity.this)
+							.setTitle("Delete table [" + currentTableName + "]")
+							.setMessage("This will remove all data from table [" + currentTableName + "]")
+							.setPositiveButton("continue", new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									try {
 //								mSqLiteOpenHelper.execute("DELETE FROM " + currentTableName);
-								Snackbar.make(mRootView, currentTableName + " cleared Successfully", Snackbar.LENGTH_LONG).show();
+										Snackbar.make(mRootView, currentTableName + " cleared Successfully", Snackbar.LENGTH_LONG).show();
 //								refreshTable(null); fixme
-							} catch (SQLException e) {
-								Log.e("ADBM", "Error while deleting table " + currentTableName, e);
-								mMessageTextView.setBackgroundColor(Color.RED);
-								mMessageTextView.setText("Error: " + e.getMessage());
-							}
-						})
-						.setNegativeButton(android.R.string.cancel, null)
-						.show();
+									} catch (SQLException e) {
+										Log.e("ADBM", "Error while deleting table " + currentTableName, e);
+										mMessageTextView.setBackgroundColor(Color.RED);
+										mMessageTextView.setText("Error: " + e.getMessage());
+									}
+								}
+							})
+							.setNegativeButton(android.R.string.cancel, null)
+							.show();
+				}
 			}
 		});
 	}
@@ -519,56 +554,62 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 			linearLayout.addView(row);
 		}
 
-		runOnUiThread(() -> {
-			if (!isFinishing()) {
-				new AlertDialog.Builder(_ADBMActivity.this)
-						.setTitle("Add a new row")
-						.setView(mainView)
-						.setCancelable(false)
-						.setPositiveButton("Add", (dialog, which) -> {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				if (!_ADBMActivity.this.isFinishing()) {
+					new AlertDialog.Builder(_ADBMActivity.this)
+							.setTitle("Add a new row")
+							.setView(mainView)
+							.setCancelable(false)
+							.setPositiveButton("Add", new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
 
-							ContentValues data = new ContentValues();
-							for (Map.Entry<String, Integer> entry : COLUMNS.entrySet()) {
-								String field = entry.getKey();
+									ContentValues data = new ContentValues();
+									for (Map.Entry<String, Integer> entry : COLUMNS.entrySet()) {
+										String field = entry.getKey();
 
-								if (BaseColumns._ID.equals(field)) {
-									continue;
-								}
+										if (BaseColumns._ID.equals(field)) {
+											continue;
+										}
 
-								String value = mapET.get(field).getText().toString();
+										String value = mapET.get(field).getText().toString();
 
-								if (!value.equals(NULL_VALUE)) {
-									data.putNull(field);
-								} else {
-									// handle type
-									int type = entry.getValue();
-									switch (type) {
-										case Cursor.FIELD_TYPE_STRING:
-											data.put(field, value);
-											break;
-
-										case Cursor.FIELD_TYPE_INTEGER:
-											data.put(field, Integer.valueOf(value));
-											break;
-
-										case Cursor.FIELD_TYPE_FLOAT:
-											data.put(field, Float.valueOf(value));
-											break;
-
-										default:
-											// todo
+										if (!value.equals(NULL_VALUE)) {
 											data.putNull(field);
-									}
-								}
-							}
+										} else {
+											// handle type
+											int type = entry.getValue();
+											switch (type) {
+												case Cursor.FIELD_TYPE_STRING:
+													data.put(field, value);
+													break;
 
-							Bundle args = new Bundle();
-							args.putString("currentTableName", currentTableName);
-							args.putParcelable("contentValues", data);
-							getLoaderManager().restartLoader(LOADER_ID_INSERT, args, this);
-						})
-						.setNegativeButton("close", null)
-						.show();
+												case Cursor.FIELD_TYPE_INTEGER:
+													data.put(field, Integer.valueOf(value));
+													break;
+
+												case Cursor.FIELD_TYPE_FLOAT:
+													data.put(field, Float.valueOf(value));
+													break;
+
+												default:
+													// todo
+													data.putNull(field);
+											}
+										}
+									}
+
+									Bundle args = new Bundle();
+									args.putString("currentTableName", currentTableName);
+									args.putParcelable("contentValues", data);
+									_ADBMActivity.this.getLoaderManager().restartLoader(LOADER_ID_INSERT, args, _ADBMActivity.this);
+								}
+							})
+							.setNegativeButton("close", null)
+							.show();
+				}
 			}
 		});
 	}
@@ -832,17 +873,20 @@ public class _ADBMActivity extends AppCompatActivity implements LoaderManager.Lo
 
 					// add a listener on the row for edition
 					// fixme utiliser des EditText ??
-					tableRow.setOnClickListener(v -> {
-						Map<String, String> currentRowValues = new HashMap<>();
-						for (int i = 0; i < tableRow.getChildCount(); i++) {
-							TextView cell = (TextView) tableRow.getChildAt(i);
+					tableRow.setOnClickListener(new View.OnClickListener() {
+						@Override
+						public void onClick(View v) {
+							Map<String, String> currentRowValues = new HashMap<>();
+							for (int i = 0; i < tableRow.getChildCount(); i++) {
+								TextView cell = (TextView) tableRow.getChildAt(i);
 
-							String columnName = (String) cell.getTag();
-							String value = cell.getText().toString();
-							currentRowValues.put(columnName, value);
+								String columnName = (String) cell.getTag();
+								String value = cell.getText().toString();
+								currentRowValues.put(columnName, value);
+							}
+
+							_ADBMActivity.this.updateOrDeleteRow(currentRowValues);
 						}
-
-						updateOrDeleteRow(currentRowValues);
 					});
 				}
 				break;

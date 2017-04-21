@@ -134,7 +134,12 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		RelativeLayout.LayoutParams previousLayoutParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
 		previousLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_START);
 		mPreviousButton.setLayoutParams(previousLayoutParams);
-		mPreviousButton.setOnClickListener(v -> displayTablePage(--currentPageNumber));
+		mPreviousButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				TableFragment.this.displayTablePage(--currentPageNumber);
+			}
+		});
 		mNavigationLayout.addView(mPreviousButton);
 
 		mNbPageTextView = new TextView(getActivity());
@@ -150,7 +155,12 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		RelativeLayout.LayoutParams nextLayoutParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
 		nextLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_END);
 		mNextButton.setLayoutParams(nextLayoutParams);
-		mNextButton.setOnClickListener(v -> displayTablePage(++currentPageNumber));
+		mNextButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				TableFragment.this.displayTablePage(++currentPageNumber);
+			}
+		});
 		mNavigationLayout.addView(mNextButton);
 
 		mainLayout.addView(mNavigationLayout);
@@ -281,7 +291,12 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 	private void displayTablePage(int pageNumber) {
 		this.currentPageNumber = pageNumber;
 
-		getActivity().runOnUiThread(() -> mNbPageTextView.setText(currentPageNumber + "/" + numberOfPages));
+		getActivity().runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				mNbPageTextView.setText(currentPageNumber + "/" + numberOfPages);
+			}
+		});
 
 		// clear data
 		COLUMNS.clear();
