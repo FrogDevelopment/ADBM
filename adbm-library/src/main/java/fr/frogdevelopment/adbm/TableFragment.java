@@ -43,6 +43,7 @@ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 public class TableFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>, ADBMAsyncTaskLoader.ErrorHandler {
 
 	private String mTableName;
+	private TableRow mTableHeader;
 
 	static class ColumnInfo {
 		String name;
@@ -249,7 +250,6 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 		int id = loader.getId();
 
-		TableRow header;
 		switch (id) {
 			case LOADER_ID_COUNT_ROW:
 				cursor.moveToNext();
@@ -263,8 +263,8 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 				COLUMNS.clear();
 
-				header = new TableRow(getActivity());
-				header.setPadding(1, 1, 1, 1);
+				mTableHeader = new TableRow(getActivity());
+				mTableHeader.setPadding(1, 1, 1, 1);
 
 				while (cursor.moveToNext()) {
 					String columnName = cursor.getString(1);
@@ -273,16 +273,16 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 					COLUMNS.put(columnName, ColumnInfo.create(columnName, columnType, columnNullable));
 
-					header.addView(createCellHeader(columnName));
+					mTableHeader.addView(createCellHeader(columnName));
 				}
-
-				mTableLayout.addView(header);
 
 				if (mNumberOfPages == 0) {
 					mCurrentPageNumber = 0;
 					mNbPageTextView.setText("0/0");
 					mPreviousButton.setEnabled(false);
 					mNextButton.setEnabled(false);
+
+					mTableLayout.addView(mTableHeader);
 				} else {
 					displayTablePage(1);
 				}
@@ -324,12 +324,17 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 	}
 
 	private void displayTablePage(int pageNumber) {
+		if (mTableHeader == null) {
+			return;
+		}
+
 		this.mCurrentPageNumber = pageNumber;
 
 		mNbPageTextView.setText(mCurrentPageNumber + "/" + mNumberOfPages);
 
 		// clear data
 		mTableLayout.removeAllViews();
+		mTableLayout.addView(mTableHeader);
 
 		mPreviousButton.setEnabled(mCurrentPageNumber > 1);
 		mNextButton.setEnabled(mCurrentPageNumber < mNumberOfPages);
