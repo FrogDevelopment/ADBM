@@ -5,6 +5,8 @@ import android.app.LoaderManager;
 import android.content.Context;
 import android.content.Loader;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,25 +20,27 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TableListFragment extends ListFragment implements LoaderManager.LoaderCallbacks<Cursor> {
+public class TableListFragment extends ListFragment implements LoaderManager.LoaderCallbacks<Cursor>, ADBMAsyncTaskLoader.ErrorHandler {
 
 	private static final String QUERY_TABLES_NAME = "SELECT name _id FROM sqlite_master WHERE type ='table'";
 
-	interface ADBMTablesCallBack extends ADBMCallBack {
+	interface CallBack {
+		SQLiteOpenHelper getSqLiteOpenHelper();
 
 		void onTableClick(String tableName);
 	}
 
-	private ADBMTablesCallBack mCallBack;
+	private CallBack mCallBack;
+	private TextView mEmptyView;
 
 	@Override
 	public void onAttach(Context context) {
 		super.onAttach(context);
 
 		try {
-			mCallBack = (ADBMTablesCallBack) context;
+			mCallBack = (CallBack) context;
 		} catch (ClassCastException e) {
-			throw new ClassCastException(context.toString() + " must implement " + ADBMTablesCallBack.class.getSimpleName());
+			throw new ClassCastException(context.toString() + " must implement " + CallBack.class.getSimpleName());
 		}
 	}
 
@@ -56,11 +60,11 @@ public class TableListFragment extends ListFragment implements LoaderManager.Loa
 		listView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		linearLayout.addView(listView);
 
-		TextView textView = new TextView(getActivity());
-		textView.setId(android.R.id.empty);
-		textView.setText("No data");
-		textView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-		linearLayout.addView(textView);
+		mEmptyView = new TextView(getActivity());
+		mEmptyView.setId(android.R.id.empty);
+		mEmptyView.setText("No data");
+		mEmptyView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+		linearLayout.addView(mEmptyView);
 
 		return linearLayout;
 	}
@@ -80,7 +84,14 @@ public class TableListFragment extends ListFragment implements LoaderManager.Loa
 
 	@Override
 	public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-		return new ADBMAsyncTaskLoader(getActivity(), mCallBack, QUERY_TABLES_NAME);
+		return new ADBMAsyncTaskLoader(getActivity(), mCallBack.getSqLiteOpenHelper(), QUERY_TABLES_NAME, this);
+	}
+
+	@Override
+	public void onError(String message) {
+		setListAdapter(null);
+		mEmptyView.setText(message);
+		mEmptyView.setBackgroundColor(Color.RED);
 	}
 
 	@Override
@@ -89,11 +100,11 @@ public class TableListFragment extends ListFragment implements LoaderManager.Loa
 		while (cursor.moveToNext()) {
 			tableNames.add(cursor.getString(0));
 		}
-		setListAdapter(new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, tableNames));
-
-
 		cursor.close();
 		getLoaderManager().destroyLoader(loader.getId());
+
+		setListAdapter(new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, tableNames));
+
 	}
 
 	@Override

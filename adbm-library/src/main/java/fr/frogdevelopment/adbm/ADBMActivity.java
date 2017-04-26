@@ -1,62 +1,41 @@
 package fr.frogdevelopment.adbm;
 
-import android.database.SQLException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Bundle;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.FrameLayout.LayoutParams;
-import android.widget.RelativeLayout;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class ADBMActivity extends AppCompatActivity implements ADBMCallBack, TableListFragment.ADBMTablesCallBack {
+public abstract class ADBMActivity extends AppCompatActivity implements TableListFragment.CallBack , TableFragment.CallBack {
 
 	static final String NULL_VALUE = "null";
 	static final Map<String, Integer> COLUMNS = new HashMap<>();
-
-	private FrameLayout mFrameLayout;
 
 	public abstract SQLiteOpenHelper getSqLiteOpenHelper();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
 
 		setTitle("Android Data Base Manager");
 
-		ActionBar actionBar = getSupportActionBar();
-		if (actionBar != null) {
-			actionBar.setDisplayHomeAsUpEnabled(true);
-		}
+//		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+//		setSupportActionBar(toolbar);
 
-		// *****************************************
-		RelativeLayout relativeLayout = new RelativeLayout(this);
-
-		mFrameLayout = new FrameLayout(this);
-		mFrameLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-		mFrameLayout.setId(View.generateViewId());
-		relativeLayout.addView(mFrameLayout);
-
-		setContentView(relativeLayout, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+//		ActionBar actionBar = getSupportActionBar();
+//		if (actionBar != null) {
+//			actionBar.setDisplayHomeAsUpEnabled(true);
+//		}
 
 		TableListFragment fragment = new TableListFragment();
 
 		getFragmentManager()
 				.beginTransaction()
-				.replace(mFrameLayout.getId(), fragment)
+				.replace(R.id.main_frame, fragment)
 				.commit();
-	}
-
-	@Override
-	public void showError(SQLException message) {
-		// fixme
-//		mMessageTextView.setBackgroundColor(Color.RED);
-//		mMessageTextView.setText("Error: " + e.getMessage());
 	}
 
 	@Override
@@ -68,7 +47,7 @@ public abstract class ADBMActivity extends AppCompatActivity implements ADBMCall
 
 		getFragmentManager()
 				.beginTransaction()
-				.replace(mFrameLayout.getId(), fragment)
+				.replace(R.id.main_frame, fragment)
 				.addToBackStack(null)
 				.commit();
 	}
