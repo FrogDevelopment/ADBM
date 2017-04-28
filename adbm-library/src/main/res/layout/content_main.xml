@@ -63,30 +63,43 @@
 
         <ProgressBar
             android:id="@+id/progress_bar"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:indeterminateOnly="true"
             android:layout_gravity="center"/>
 
-        <ScrollView
-            android:layout_width="match_parent"
+        <HorizontalScrollView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fadeScrollbars="false"
             android:scrollbarStyle="outsideInset">
 
-            <HorizontalScrollView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fadeScrollbars="false"
-                android:scrollbarStyle="outsideInset">
+                android:orientation="vertical">
 
                 <TableLayout
-                    android:id="@+id/table_layout"
+                    android:id="@+id/table_header"
                     android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:isScrollContainer="true"/>
+                    android:layout_height="match_parent"/>
 
-            </HorizontalScrollView>
-        </ScrollView>
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fadeScrollbars="false"
+                    android:scrollbarStyle="outsideInset">
+
+                    <TableLayout
+                        android:id="@+id/table_rows"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:isScrollContainer="true"/>
+
+                </ScrollView>
+            </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
     <com.github.clans.fab.FloatingActionMenu

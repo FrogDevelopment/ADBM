@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.provider.BaseColumns;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -42,8 +43,6 @@ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 
 public class TableFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>, ADBMAsyncTaskLoader.ErrorHandler {
 
-	private String mTableName;
-	private TableRow mTableHeader;
 
 	static class ColumnInfo {
 		String name;
@@ -96,7 +95,11 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 	private CallBack mCallBack;
 
-	private TableLayout mTableLayout;
+	private TableLayout mTableHeader;
+	private TableRow mRowHeader;
+	private TableLayout mTableRows;
+
+	private String mTableName;
 
 	// PAGINATION
 	private int mNumberOfPages = 0;
@@ -173,9 +176,12 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		mProgressBar = (ProgressBar) rootView.findViewById(R.id.progress_bar);
 
 		// *****************************************
+		mTableHeader = (TableLayout) rootView.findViewById(R.id.table_header);
+		mTableHeader.setHorizontalScrollBarEnabled(true);
+
 		// The table
-		mTableLayout = (TableLayout) rootView.findViewById(R.id.table_layout);
-		mTableLayout.setHorizontalScrollBarEnabled(true);
+		mTableRows = (TableLayout) rootView.findViewById(R.id.table_rows);
+		mTableRows.setHorizontalScrollBarEnabled(true);
 
 
 		// *****************************************
@@ -184,7 +190,7 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		fabAdd.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				addNewRow();
+				addNewRow(getActivity());
 			}
 		});
 		FloatingActionButton fabDelete = (FloatingActionButton) rootView.findViewById(R.id.fab_delete);
@@ -246,7 +252,7 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 	@Override
 	public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-		mProgressBar.setVisibility(View.GONE);
+//		mProgressBar.setVisibility(View.INVISIBLE);
 
 		int id = loader.getId();
 
@@ -263,8 +269,8 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 				COLUMNS.clear();
 
-				mTableHeader = new TableRow(getActivity());
-				mTableHeader.setPadding(1, 1, 1, 1);
+				mRowHeader = new TableRow(getActivity());
+				mRowHeader.setPadding(1, 1, 1, 1);
 
 				while (cursor.moveToNext()) {
 					String columnName = cursor.getString(1);
@@ -273,16 +279,16 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 					COLUMNS.put(columnName, ColumnInfo.create(columnName, columnType, columnNullable));
 
-					mTableHeader.addView(createCellHeader(columnName));
+					mRowHeader.addView(createCellHeader(getActivity(), columnName));
 				}
+
+				mTableHeader.addView(mRowHeader);
 
 				if (mNumberOfPages == 0) {
 					mCurrentPageNumber = 0;
 					mNbPageTextView.setText("0/0");
 					mPreviousButton.setEnabled(false);
 					mNextButton.setEnabled(false);
-
-					mTableLayout.addView(mTableHeader);
 				} else {
 					displayTablePage(1);
 				}
@@ -290,9 +296,10 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 				break;
 
 			case LOADER_ID_TABLE_QUERY:
+				Context context = getActivity();
 				while (cursor.moveToNext()) {
-					final TableRow tableRow = createRow(cursor);
-					mTableLayout.addView(tableRow);
+					final TableRow tableRow = createRow(context, cursor);
+					mTableRows.addView(tableRow);
 
 //					// add a listener on the row for edition
 //					// fixme utiliser des EditText ??
@@ -333,8 +340,7 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		mNbPageTextView.setText(mCurrentPageNumber + "/" + mNumberOfPages);
 
 		// clear data
-		mTableLayout.removeAllViews();
-		mTableLayout.addView(mTableHeader);
+		mTableRows.removeAllViews();
 
 		mPreviousButton.setEnabled(mCurrentPageNumber > 1);
 		mNextButton.setEnabled(mCurrentPageNumber < mNumberOfPages);
@@ -352,8 +358,8 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 	}
 
 	@NonNull
-	private TextView createCellHeader(String columnName) {
-		final TextView cellHeader = new TextView(getActivity());
+	private static TextView createCellHeader(Context context, String columnName) {
+		final TextView cellHeader = new TextView(context);
 		cellHeader.setBackgroundColor(Color.DKGRAY);
 		cellHeader.setTextColor(Color.WHITE);
 		cellHeader.setPadding(4, 4, 4, 4);
@@ -368,17 +374,19 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 	}
 
 	@NonNull
-	private TableRow createRow(Cursor cursor) {
-		final TableRow row = new TableRow(getActivity());
+	private static TableRow createRow(Context context, Cursor cursor) {
+		final TableRow row = new TableRow(context);
 		row.setBackgroundColor(Color.BLACK);
 		row.setPadding(1, 1, 1, 1);
 
+		TextView cell;
+		TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
+		layoutParams.setMargins(1, 1, 1, 1);
 		for (int columnIndex = 0, nbCol = cursor.getColumnCount(); columnIndex < nbCol; columnIndex++) {
 			String columnName = cursor.getColumnName(columnIndex);
-			int columnType = cursor.getType(columnIndex);
 
 			String value;
-			switch (columnType) {
+			switch (COLUMNS.get(columnName).type) {
 				case Cursor.FIELD_TYPE_STRING:
 					value = cursor.getString(columnIndex);
 					break;
@@ -392,18 +400,15 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 					break;
 
 				default:
-					// Column data is not handle, do not display it
+					// fixme Column data is not handle, do not display it
 					value = null;
 			}
 
-			final TextView cell = new TextView(getActivity());
+			cell = new TextView(context);
+			cell.setLayoutParams(layoutParams);
 			cell.setBackgroundColor(Color.WHITE);
 			cell.setTextColor(Color.BLACK);
 			cell.setPadding(4, 4, 4, 4);
-
-			TableRow.LayoutParams layoutParams = new TableRow.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
-			layoutParams.setMargins(1, 1, 1, 1);
-			cell.setLayoutParams(layoutParams);
 			if (value == null) {
 				cell.setText(NULL_VALUE);
 				cell.setTypeface(null, Typeface.BOLD_ITALIC);
@@ -419,12 +424,12 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		return row;
 	}
 
-	private void addNewRow() {
-		final ScrollView mainView = new ScrollView(getActivity());
+	private static void addNewRow(Context context) {
+		final ScrollView mainView = new ScrollView(context);
 		mainView.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
 		mainView.setPadding(5, 5, 5, 5);
 
-		LinearLayout linearLayout = new LinearLayout(getActivity());
+		LinearLayout linearLayout = new LinearLayout(context);
 		linearLayout.setOrientation(LinearLayout.VERTICAL);
 		linearLayout.setScrollContainer(true);
 		linearLayout.setLayoutParams(new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
@@ -438,30 +443,51 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		valueLayoutParams.weight = 1;
 
 		final Map<String, EditText> mapET = new HashMap<>();
-		for (String field : COLUMNS.keySet()) {
+		for (Map.Entry<String, ColumnInfo> entry : COLUMNS.entrySet()) {
+			String field = entry.getKey();
 			if (BaseColumns._ID.equals(field)) {
 				continue;
 			}
 
-			final LinearLayout row = new LinearLayout(getActivity());
+			ColumnInfo columnInfo = entry.getValue();
+
+			final LinearLayout row = new LinearLayout(context);
 			row.setOrientation(LinearLayout.HORIZONTAL);
 			row.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
 
-			TextView fieldTextView = new TextView(getActivity());
+			TextView fieldTextView = new TextView(context);
 			fieldTextView.setLayoutParams(fieldLayoutParams);
 			fieldTextView.setText(field);
 			row.addView(fieldTextView);
 
-			EditText valueEditText = new EditText(getActivity());
+			EditText valueEditText = new EditText(context);
 			valueEditText.setLayoutParams(valueLayoutParams);
 			row.addView(valueEditText);
+			int inputType;
+			switch (columnInfo.type) {
+				case Cursor.FIELD_TYPE_STRING:
+					inputType = InputType.TYPE_CLASS_TEXT;
+					break;
+
+				case Cursor.FIELD_TYPE_INTEGER:
+				case Cursor.FIELD_TYPE_FLOAT:
+					inputType = InputType.TYPE_CLASS_NUMBER;
+					break;
+
+				default:
+					// fixme
+					inputType = InputType.TYPE_NULL;
+					valueEditText.setEnabled(false);
+			}
+
+			valueEditText.setInputType(inputType);
 
 			mapET.put(field, valueEditText);
 
 			linearLayout.addView(row);
 		}
 
-		new AlertDialog.Builder(getActivity())
+		new AlertDialog.Builder(context)
 				.setTitle("Add a new row")
 				.setView(mainView)
 				.setCancelable(false)
@@ -504,9 +530,9 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 							}
 						}
 
-						Bundle args = new Bundle();
-						args.putString("currentTableName", mTableName);
-						args.putParcelable("contentValues", data);
+//						Bundle args = new Bundle();
+//						args.putString("currentTableName", mTableName);
+//						args.putParcelable("contentValues", data);
 //						getLoaderManager().restartLoader(LOADER_ID_INSERT, args, getActivity());
 					}
 				})
