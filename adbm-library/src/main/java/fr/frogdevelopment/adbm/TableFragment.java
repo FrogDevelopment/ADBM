@@ -5,7 +5,6 @@ import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Loader;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -137,7 +136,7 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		CoordinatorLayout rootView = (CoordinatorLayout) inflater.inflate(R.layout.content_main, container, false);
 
 		// *****************************************
-		Spinner mNbRowsSpinner = (Spinner) rootView.findViewById(R.id.row_spinner);
+		Spinner mNbRowsSpinner = rootView.findViewById(R.id.row_spinner);
 		ArrayAdapter nbRowsAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.select_dialog_item, Arrays.asList("10", "20", "50", "100"));
 		nbRowsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		mNbRowsSpinner.setAdapter(nbRowsAdapter);
@@ -157,59 +156,38 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 		// *****************************************
 		// layout with buttons for the pagination
 
-		mPreviousButton = (Button) rootView.findViewById(R.id.previous_button);
-		mPreviousButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				TableFragment.this.displayTablePage(--mCurrentPageNumber);
-			}
-		});
+		mPreviousButton = rootView.findViewById(R.id.previous_button);
+		mPreviousButton.setOnClickListener(v -> TableFragment.this.displayTablePage(--mCurrentPageNumber));
 
-		mNbPageTextView = (TextView) rootView.findViewById(R.id.page_view);
+		mNbPageTextView = rootView.findViewById(R.id.page_view);
 
-		mNextButton = (Button) rootView.findViewById(R.id.next_button);
-		mNextButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				TableFragment.this.displayTablePage(++mCurrentPageNumber);
-			}
-		});
+		mNextButton = rootView.findViewById(R.id.next_button);
+		mNextButton.setOnClickListener(v -> TableFragment.this.displayTablePage(++mCurrentPageNumber));
 
 		// *****************************************
-		mProgressBar = (ProgressBar) rootView.findViewById(R.id.progress_bar);
+		mProgressBar = rootView.findViewById(R.id.progress_bar);
 
 		// *****************************************
-		mTableHeader = (TableLayout) rootView.findViewById(R.id.table_header);
+		mTableHeader = rootView.findViewById(R.id.table_header);
 		mTableHeader.setHorizontalScrollBarEnabled(true);
 
 		// The table
-		mTableRows = (TableLayout) rootView.findViewById(R.id.table_rows);
+		mTableRows = rootView.findViewById(R.id.table_rows);
 		mTableRows.setHorizontalScrollBarEnabled(true);
 
 
 		// *****************************************
 		// Fab
-		FloatingActionButton fabAdd = (FloatingActionButton) rootView.findViewById(R.id.fab_add);
-		fabAdd.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				addNewRow(getActivity());
-			}
-		});
-		FloatingActionButton fabDelete = (FloatingActionButton) rootView.findViewById(R.id.fab_delete);
-		fabDelete.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
+		FloatingActionButton fabAdd = rootView.findViewById(R.id.fab_add);
+		fabAdd.setOnClickListener(v -> addNewRow(getActivity()));
+		FloatingActionButton fabDelete = rootView.findViewById(R.id.fab_delete);
+		fabDelete.setOnClickListener(v -> {
 
-			}
-		});
-		FloatingActionButton fabDrop = (FloatingActionButton) rootView.findViewById(R.id.fab_drop);
-		fabDrop.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
+        });
+		FloatingActionButton fabDrop = rootView.findViewById(R.id.fab_drop);
+		fabDrop.setOnClickListener(v -> {
 
-			}
-		});
+        });
 
 		return rootView;
 	}
@@ -490,51 +468,48 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 				.setTitle("Add a new row")
 				.setView(mainView)
 				.setCancelable(false)
-				.setPositiveButton("Add", new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
+				.setPositiveButton("Add", (dialog, which) -> {
 
-						ContentValues data = new ContentValues();
-						for (Map.Entry<String, ColumnInfo> entry : COLUMNS.entrySet()) {
-							String field = entry.getKey();
-							ColumnInfo columnInfo = entry.getValue();
+                    ContentValues data = new ContentValues();
+                    for (Map.Entry<String, ColumnInfo> entry : COLUMNS.entrySet()) {
+                        String field = entry.getKey();
+                        ColumnInfo columnInfo = entry.getValue();
 
-							if (BaseColumns._ID.equals(field)) {
-								continue;
-							}
+                        if (BaseColumns._ID.equals(field)) {
+                            continue;
+                        }
 
-							String value = mapET.get(field).getText().toString();
+                        String value = mapET.get(field).getText().toString();
 
-							if (value.equals(NULL_VALUE)) {
-								data.putNull(field);
-							} else {
-								// handle type
-								switch (columnInfo.type) {
-									case Cursor.FIELD_TYPE_STRING:
-										data.put(field, value);
-										break;
+                        if (value.equals(NULL_VALUE)) {
+                            data.putNull(field);
+                        } else {
+                            // handle type
+                            switch (columnInfo.type) {
+                                case Cursor.FIELD_TYPE_STRING:
+                                    data.put(field, value);
+                                    break;
 
-									case Cursor.FIELD_TYPE_INTEGER:
-										data.put(field, Integer.valueOf(value));
-										break;
+                                case Cursor.FIELD_TYPE_INTEGER:
+                                    data.put(field, Integer.valueOf(value));
+                                    break;
 
-									case Cursor.FIELD_TYPE_FLOAT:
-										data.put(field, Float.valueOf(value));
-										break;
+                                case Cursor.FIELD_TYPE_FLOAT:
+                                    data.put(field, Float.valueOf(value));
+                                    break;
 
-									default:
-										// todo
-										data.putNull(field);
-								}
-							}
-						}
+                                default:
+                                    // todo
+                                    data.putNull(field);
+                            }
+                        }
+                    }
 
 //						Bundle args = new Bundle();
 //						args.putString("currentTableName", mTableName);
 //						args.putParcelable("contentValues", data);
 //						getLoaderManager().restartLoader(LOADER_ID_INSERT, args, getActivity());
-					}
-				})
+                })
 				.setNegativeButton("close", null)
 				.show();
 	}
