@@ -15,11 +15,14 @@ import android.os.Bundle;
 import android.provider.BaseColumns;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.TextInputEditText;
+import android.support.design.widget.TextInputLayout;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -426,7 +429,7 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 	private static void addNewRow(Context context) {
 		final ScrollView mainView = new ScrollView(context);
-		mainView.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
+		mainView.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, MATCH_PARENT));
 		mainView.setPadding(5, 5, 5, 5);
 
 		LinearLayout linearLayout = new LinearLayout(context);
@@ -436,13 +439,9 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 		mainView.addView(linearLayout);
 
-		TableRow.LayoutParams fieldLayoutParams = new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-		fieldLayoutParams.weight = 1;
-
-		TableRow.LayoutParams valueLayoutParams = new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-		valueLayoutParams.weight = 1;
-
 		final Map<String, EditText> mapET = new HashMap<>();
+		int nbFields = COLUMNS.size();
+		int indexField = 0;
 		for (Map.Entry<String, ColumnInfo> entry : COLUMNS.entrySet()) {
 			String field = entry.getKey();
 			if (BaseColumns._ID.equals(field)) {
@@ -451,18 +450,14 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 
 			ColumnInfo columnInfo = entry.getValue();
 
-			final LinearLayout row = new LinearLayout(context);
-			row.setOrientation(LinearLayout.HORIZONTAL);
+			TextInputEditText valueEditText = new TextInputEditText(context);
+			valueEditText.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
+			valueEditText.setHint(field);
+
+			TextInputLayout row = new TextInputLayout(context);
 			row.setLayoutParams(new TableRow.LayoutParams(MATCH_PARENT, WRAP_CONTENT));
-
-			TextView fieldTextView = new TextView(context);
-			fieldTextView.setLayoutParams(fieldLayoutParams);
-			fieldTextView.setText(field);
-			row.addView(fieldTextView);
-
-			EditText valueEditText = new EditText(context);
-			valueEditText.setLayoutParams(valueLayoutParams);
 			row.addView(valueEditText);
+
 			int inputType;
 			switch (columnInfo.type) {
 				case Cursor.FIELD_TYPE_STRING:
@@ -481,6 +476,10 @@ public class TableFragment extends Fragment implements LoaderManager.LoaderCallb
 			}
 
 			valueEditText.setInputType(inputType);
+
+			if (++indexField == nbFields) {
+				valueEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+			}
 
 			mapET.put(field, valueEditText);
 
